@@ -95,9 +95,9 @@ export async function GET(request: NextRequest) {
       path: "/",
     });
     
-    // Redirect to NextAuth callback to create session
-    const callbackUrl = new URL("/api/auth/callback/steam", request.url);
-    return NextResponse.redirect(callbackUrl);
+    // Redirect to a page that will trigger the sign-in client-side
+    const signinUrl = new URL("/steam-signin", request.url);
+    return NextResponse.redirect(signinUrl);
   } catch (error) {
     console.error("Steam auth error:", error);
     return NextResponse.redirect(

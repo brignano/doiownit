@@ -17,6 +17,7 @@ interface ExtendedSession extends Session {
 // Steam Credentials provider for NextAuth v5
 // Reads user data from cookie set by Steam OpenID callback
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     CredentialsProvider({
       id: "steam",
@@ -50,6 +51,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  pages: {
+    signIn: "/",
+  },
   callbacks: {
     async jwt({ token, user }): Promise<ExtendedToken> {
       if (user) {
