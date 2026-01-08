@@ -56,7 +56,7 @@ export default function Home() {
           Sign in with Steam to view your game library
         </p>
         <button
-          onClick={() => signIn("steam")}
+          onClick={() => window.location.href = "/api/steam/login"}
           className="px-6 py-3 bg-[#171A21] text-white rounded-lg hover:bg-[#1B2838] transition-colors font-medium flex items-center gap-2 mx-auto"
         >
           <svg

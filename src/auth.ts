@@ -1,6 +1,8 @@
 import NextAuth from "next-auth";
 import { JWT } from "next-auth/jwt";
 import { Session } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { cookies } from "next/headers";
 
 interface ExtendedToken extends JWT {
   steamId?: string;
@@ -12,91 +14,48 @@ interface ExtendedSession extends Session {
   };
 }
 
-// Steam provider using OpenID (compatible with next-auth-steam approach)
-// Uses STEAM_API_KEY to fetch user profile from Steam Web API
+// Steam Credentials provider for NextAuth v5
+// Reads user data from cookie set by Steam OpenID callback
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
-    {
+    CredentialsProvider({
       id: "steam",
       name: "Steam",
-      type: "oidc",
-      clientId: "steam",
-      issuer: "https://steamcommunity.com/openid",
-      authorization: {
-        url: "https://steamcommunity.com/openid/login",
-        params: {
-          "openid.mode": "checkid_setup",
-          "openid.ns": "http://specs.openid.net/auth/2.0",
-          "openid.identity":
-            "http://specs.openid.net/auth/2.0/identifier_select",
-          "openid.claimed_id":
-            "http://specs.openid.net/auth/2.0/identifier_select",
-          "openid.return_to": `${process.env.NEXTAUTH_URL}/api/auth/callback/steam`,
-          "openid.realm": process.env.NEXTAUTH_URL || "http://localhost:3000",
-        },
-      },
-      token: {
-        async request() {
-          // OpenID doesn't use tokens in the traditional OAuth2 sense
-          // Steam ID is extracted from the callback URL
-          return { tokens: {} };
-        },
-      },
-      userinfo: {
-        async request(context: { tokens: { steamId?: string } }) {
-          const steamId = context.tokens.steamId;
-          if (!steamId) {
-            throw new Error("No Steam ID found");
-          }
-
-          // Fetch user info from Steam Web API
-          const apiKey = process.env.STEAM_API_KEY;
-          if (!apiKey) {
-            throw new Error("STEAM_API_KEY is not configured");
-          }
-
-          const url = new URL(
-            "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002"
-          );
-          url.searchParams.set("key", apiKey);
-          url.searchParams.set("steamids", steamId);
-
-          const response = await fetch(url);
-          const data = await response.json();
-          const player = data.response.players[0];
-
+      credentials: {},
+      async authorize() {
+        // Read user data from cookie set by Steam callback
+        const cookieStore = await cookies();
+        const steamUserCookie = cookieStore.get("steam-user");
+        
+        if (!steamUserCookie) {
+          return null;
+        }
+        
+        try {
+          const userData = JSON.parse(steamUserCookie.value);
+          
+          // Clear the cookie after reading
+          cookieStore.delete("steam-user");
+          
           return {
-            id: player.steamid,
-            name: player.personaname,
-            image: player.avatarfull,
-            email: `${player.steamid}@steamcommunity.com`,
+            id: userData.id,
+            name: userData.name,
+            email: userData.email,
+            image: userData.image,
           };
-        },
+        } catch (error) {
+          console.error("Failed to parse steam user data:", error);
+          return null;
+        }
       },
-      profile(profile: {
-        id: string;
-        name: string;
-        image: string;
-        email: string;
-      }) {
-        return {
-          id: profile.id,
-          name: profile.name,
-          email: profile.email,
-          image: profile.image,
-        };
-      },
-    },
+    }),
   ],
   callbacks: {
-    async jwt({ token, account, profile }): Promise<ExtendedToken> {
-      // Store steam id in token
-      if (account?.providerAccountId) {
-        token.steamId = account.providerAccountId;
-      }
-      if (profile) {
-        token.picture = profile.image as string;
-        token.name = profile.name as string;
+    async jwt({ token, user }): Promise<ExtendedToken> {
+      if (user) {
+        token.steamId = user.id;
+        token.picture = user.image;
+        token.name = user.name;
       }
       return token;
     },
