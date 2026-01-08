@@ -17,7 +17,7 @@ export const getSteamGames = async (accessToken: string): Promise<Game[]> => {
       `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/`,
       {
         params: {
-          key: process.env.STEAM_WEB_API_KEY,
+          key: process.env.STEAM_API_KEY,
           steamids: accessToken,
         },
       }
@@ -34,7 +34,7 @@ export const getSteamGames = async (accessToken: string): Promise<Game[]> => {
       `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/`,
       {
         params: {
-          key: process.env.STEAM_WEB_API_KEY,
+          key: process.env.STEAM_API_KEY,
           steamid: steamId,
           include_appinfo: true,
           include_played_free_games: true,
