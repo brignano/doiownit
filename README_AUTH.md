@@ -28,8 +28,13 @@ cp .env.example .env.local
 
 1. Go to [https://steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey)
 2. Log in with your Steam account
-3. Enter your domain name (for local development, you can use `localhost`)
-4. Copy the API key
+3. **Important**: In the "Domain Name" field, enter exactly: `localhost:3000` (for local development)
+4. Copy the API key and save it for step 4
+
+**Note**: Steam's domain validation is critical. For the "invalid return url" error:
+- The domain you register must match your `NEXTAUTH_URL`
+- The application will automatically use the correct callback URL: `http://localhost:3000/api/auth/callback/steam`
+- If you change your domain later, you must re-generate your API key with the new domain
 
 ### 3. Generate NextAuth Secret
 
