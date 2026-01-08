@@ -3,183 +3,96 @@ import { JWT } from "next-auth/jwt";
 import { Session } from "next-auth";
 
 interface ExtendedToken extends JWT {
-  accessToken?: string;
-  refreshToken?: string;
-  provider?: string;
-  providerAccountId?: string;
+  steamId?: string;
 }
 
 interface ExtendedSession extends Session {
   user?: Session["user"] & {
-    accessToken?: string;
-    refreshToken?: string;
-    provider?: string;
-    providerAccountId?: string;
+    id?: string;
   };
 }
 
-interface TokenRequestContext {
-  provider: {
-    clientId: string;
-    clientSecret: string;
-    token: { url: string };
-    callbackUrl: string;
-  };
-  params: {
-    code?: string;
-  };
-}
-
-interface UserInfoRequestContext {
-  provider: {
-    userinfo: { url: string };
-  };
-  tokens: {
-    access_token: string;
-  };
-}
-
+// Steam provider using OpenID (compatible with next-auth-steam approach)
+// Uses STEAM_API_KEY to fetch user profile from Steam Web API
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     {
       id: "steam",
       name: "Steam",
-      type: "oauth",
-      clientId: process.env.STEAM_OAUTH_ID,
-      clientSecret: process.env.STEAM_OAUTH_SECRET,
+      type: "oidc",
+      clientId: "steam",
+      issuer: "https://steamcommunity.com/openid",
       authorization: {
-        url: "https://steamcommunity.com/oauth/authorize",
+        url: "https://steamcommunity.com/openid/login",
         params: {
-          scope: "openid profile email",
+          "openid.mode": "checkid_setup",
+          "openid.ns": "http://specs.openid.net/auth/2.0",
+          "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
+          "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
         },
       },
       token: {
-        url: "https://steamcommunity.com/oauth/token",
-        async request(context: TokenRequestContext) {
-          const response = await fetch(context.provider.token.url, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: new URLSearchParams({
-              client_id: context.provider.clientId,
-              client_secret: context.provider.clientSecret,
-              code: context.params.code!,
-              grant_type: "authorization_code",
-              redirect_uri: context.provider.callbackUrl,
-            }).toString(),
-          });
-
-          const tokens = await response.json();
-
-          return tokens;
+        async request() {
+          // OpenID doesn't use tokens in the traditional OAuth2 sense
+          // Steam ID is extracted from the callback URL
+          return { tokens: {} };
         },
       },
       userinfo: {
-        url: "https://steamcommunity.com/oauth/user",
-        async request(context: UserInfoRequestContext) {
-          const response = await fetch(context.provider.userinfo.url, {
-            headers: {
-              Authorization: `Bearer ${context.tokens.access_token}`,
-            },
-          });
+        async request(context: { tokens: { steamId?: string } }) {
+          const steamId = context.tokens.steamId;
+          if (!steamId) {
+            throw new Error("No Steam ID found");
+          }
 
-          const user = await response.json();
+          // Fetch user info from Steam Web API
+          const apiKey = process.env.STEAM_API_KEY;
+          if (!apiKey) {
+            throw new Error("STEAM_API_KEY is not configured");
+          }
+
+          const url = new URL(
+            "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002"
+          );
+          url.searchParams.set("key", apiKey);
+          url.searchParams.set("steamids", steamId);
+
+          const response = await fetch(url);
+          const data = await response.json();
+          const player = data.response.players[0];
 
           return {
-            id: user.steamid,
-            name: user.username || user.personaname,
-            image: user.avatar,
-            email: user.email,
+            id: player.steamid,
+            name: player.personaname,
+            image: player.avatarfull,
+            email: `${player.steamid}@steamcommunity.com`,
           };
         },
       },
-      profile(profile: Record<string, unknown>) {
+      profile(profile: {
+        id: string;
+        name: string;
+        image: string;
+        email: string;
+      }) {
         return {
-          id: String(profile.id || profile.steamid),
-          name: String(profile.name || profile.username),
-          email: String(profile.email) || null,
-          image: String(profile.image || profile.avatar) || null,
-        };
-      },
-    },
-    {
-      id: "epic",
-      name: "Epic Games",
-      type: "oauth",
-      clientId: process.env.EPIC_OAUTH_ID,
-      clientSecret: process.env.EPIC_OAUTH_SECRET,
-      authorization: {
-        url: "https://www.epicgames.com/id/oauth/authorize",
-        params: {
-          scope: "openid profile email",
-        },
-      },
-      token: {
-        url: "https://api.epicgames.dev/identity/api/v1/oauth/token",
-        async request(context: TokenRequestContext) {
-          const auth = Buffer.from(
-            `${context.provider.clientId}:${context.provider.clientSecret}`
-          ).toString("base64");
-
-          const response = await fetch(context.provider.token.url, {
-            method: "POST",
-            headers: {
-              "Authorization": `Basic ${auth}`,
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: new URLSearchParams({
-              code: context.params.code!,
-              grant_type: "authorization_code",
-              redirect_uri: context.provider.callbackUrl,
-            }).toString(),
-          });
-
-          const tokens = await response.json();
-
-          return tokens;
-        },
-      },
-      userinfo: {
-        url: "https://api.epicgames.dev/epic/oauth/v2/userInfo",
-        async request(context: UserInfoRequestContext) {
-          const response = await fetch(context.provider.userinfo.url, {
-            headers: {
-              Authorization: `Bearer ${context.tokens.access_token}`,
-            },
-          });
-
-          const user = await response.json();
-
-          return {
-            id: user.sub,
-            name: user.name || user.preferred_username,
-            email: user.email,
-            image: user.picture,
-          };
-        },
-      },
-      profile(profile: Record<string, unknown>) {
-        return {
-          id: String(profile.id || profile.sub),
-          name: String(profile.name || profile.preferred_username),
-          email: String(profile.email) || null,
-          image: String(profile.image || profile.picture) || null,
+          id: profile.id,
+          name: profile.name,
+          email: profile.email,
+          image: profile.image,
         };
       },
     },
   ],
   callbacks: {
     async jwt({ token, account, profile }): Promise<ExtendedToken> {
-      if (account) {
-        token.accessToken = account.access_token;
-        token.refreshToken = account.refresh_token;
-        token.provider = account.provider;
-        token.providerAccountId = account.providerAccountId;
+      // Store steam id in token
+      if (account?.providerAccountId) {
+        token.steamId = account.providerAccountId;
       }
       if (profile) {
-        token.image = profile.image;
-        token.name = profile.name;
+        token.picture = profile.image as string;
+        token.name = profile.name as string;
       }
       return token;
     },
@@ -190,23 +103,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session: Session;
       token: ExtendedToken;
     }): Promise<ExtendedSession> {
-      if (session.user) {
+      // Expose steam id, name, and avatar on session.user
+      if (session.user && token.steamId) {
         const extendedUser = session.user as Session["user"] & {
-          accessToken?: string;
-          refreshToken?: string;
-          provider?: string;
-          providerAccountId?: string;
+          id?: string;
         };
-        extendedUser.accessToken = token.accessToken;
-        extendedUser.refreshToken = token.refreshToken;
-        extendedUser.provider = token.provider;
-        extendedUser.providerAccountId = token.providerAccountId;
+        extendedUser.id = token.steamId;
+        extendedUser.name = token.name || session.user.name;
+        extendedUser.image = token.picture || session.user.image;
       }
       return session;
     },
-  },
-  pages: {
-    signIn: "/auth/signin",
   },
 });
 
