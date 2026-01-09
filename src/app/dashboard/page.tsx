@@ -186,9 +186,6 @@ export default function Dashboard() {
                       alt={game.name}
                       fill
                       className="object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
                     />
                   </div>
                 )}
