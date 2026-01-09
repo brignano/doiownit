@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 // Steam OpenID login initiation
-export async function GET(request: NextRequest) {
+export async function GET() {
   const returnUrl = `${process.env.NEXTAUTH_URL}/api/steam/callback`;
   const realm = process.env.NEXTAUTH_URL || "http://localhost:3000";
   
