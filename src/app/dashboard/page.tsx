@@ -3,6 +3,7 @@
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import type { Game } from "@/lib/gameProviders";
 
 export default function Dashboard() {
@@ -73,10 +74,12 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-4">
               {session?.user?.image && (
-                <img
+                <Image
                   src={session.user.image}
                   alt={session.user.name || "User"}
-                  className="h-10 w-10 rounded-full"
+                  width={40}
+                  height={40}
+                  className="rounded-full"
                 />
               )}
               <div>
@@ -178,13 +181,11 @@ export default function Dashboard() {
               >
                 {game.image && (
                   <div className="relative h-40 w-full bg-slate-200">
-                    <img
+                    <Image
                       src={game.image}
                       alt={game.name}
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
+                      fill
+                      className="object-cover"
                     />
                   </div>
                 )}
