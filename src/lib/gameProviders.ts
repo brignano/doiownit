@@ -9,27 +9,10 @@ export interface Game {
   releaseDate?: string;
 }
 
-// Steam OAuth - Get games using OAuth access token
-export const getSteamGames = async (accessToken: string): Promise<Game[]> => {
+// Steam OAuth - Get games using Steam ID
+export const getSteamGames = async (steamId: string): Promise<Game[]> => {
   try {
-    // Get user's Steam ID from OAuth token
-    const response = await axios.get(
-      `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/`,
-      {
-        params: {
-          key: process.env.STEAM_API_KEY,
-          steamids: accessToken,
-        },
-      }
-    );
-
-    if (!response.data.response.players || response.data.response.players.length === 0) {
-      return [];
-    }
-
-    const steamId = response.data.response.players[0].steamid;
-
-    // Get owned games
+    // Get owned games using the Steam ID directly
     const gamesResponse = await axios.get(
       `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/`,
       {
@@ -51,7 +34,7 @@ export const getSteamGames = async (accessToken: string): Promise<Game[]> => {
       name: game.name,
       platform: "Steam",
       playtimeMinutes: game.playtime_forever,
-      image: `https://media.steampowered.com/steamcommunity/public/images/apps/${game.appid}/logo.png`,
+      image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
     }));
   } catch (error) {
     console.error("Error fetching Steam games:", error);
