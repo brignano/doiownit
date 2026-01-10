@@ -14,6 +14,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -58,10 +60,20 @@ export default function Dashboard() {
       .includes(searchTerm.toLowerCase());
     const matchesPlatform =
       !selectedPlatform || game.platform === selectedPlatform;
-    return matchesSearch && matchesPlatform;
+    const matchesCategory =
+      !selectedCategory || game.categories?.includes(selectedCategory);
+    const matchesTag =
+      !selectedTag || game.tags?.includes(selectedTag);
+    return matchesSearch && matchesPlatform && matchesCategory && matchesTag;
   });
 
   const platforms = Array.from(new Set(games.map((game) => game.platform)));
+  const categories = Array.from(
+    new Set(games.flatMap((game) => game.categories || []))
+  ).sort();
+  const tags = Array.from(
+    new Set(games.flatMap((game) => game.tags || []))
+  ).sort();
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -138,6 +150,72 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
+
+          {categories.length > 0 && (
+            <div>
+              <label htmlFor="category" className="block text-sm font-medium text-slate-900">
+                Filter by Category
+              </label>
+              <div className="mt-2 flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                <button
+                  onClick={() => setSelectedCategory(null)}
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                    selectedCategory === null
+                      ? "bg-blue-600 text-white"
+                      : "bg-blue-100 text-blue-900 hover:bg-blue-200"
+                  }`}
+                >
+                  All Categories
+                </button>
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                      selectedCategory === category
+                        ? "bg-blue-600 text-white"
+                        : "bg-blue-100 text-blue-900 hover:bg-blue-200"
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tags.length > 0 && (
+            <div>
+              <label htmlFor="tag" className="block text-sm font-medium text-slate-900">
+                Filter by Genre/Tag
+              </label>
+              <div className="mt-2 flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                <button
+                  onClick={() => setSelectedTag(null)}
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                    selectedTag === null
+                      ? "bg-purple-600 text-white"
+                      : "bg-purple-100 text-purple-900 hover:bg-purple-200"
+                  }`}
+                >
+                  All Genres
+                </button>
+                {tags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => setSelectedTag(tag)}
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                      selectedTag === tag
+                        ? "bg-purple-600 text-white"
+                        : "bg-purple-100 text-purple-900 hover:bg-purple-200"
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Games Grid */}

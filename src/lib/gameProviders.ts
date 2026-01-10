@@ -7,6 +7,8 @@ export interface Game {
   image?: string;
   playtimeMinutes?: number;
   releaseDate?: string;
+  categories?: string[];
+  tags?: string[];
 }
 
 // Steam OAuth - Get games using Steam ID
@@ -29,13 +31,60 @@ export const getSteamGames = async (steamId: string): Promise<Game[]> => {
       return [];
     }
 
-    return gamesResponse.data.response.games.map((game: Record<string, unknown>) => ({
+    // Fetch detailed app info for categories and tags (limit to first 100 games for performance)
+    const gamesWithDetails = await Promise.all(
+      gamesResponse.data.response.games.slice(0, 100).map(async (game: Record<string, unknown>) => {
+        try {
+          // Fetch store details for categories and tags
+          const detailsResponse = await axios.get(
+            `https://store.steampowered.com/api/appdetails`,
+            {
+              params: {
+                appids: game.appid,
+              },
+            }
+          );
+
+          const appData = detailsResponse.data?.[game.appid as string]?.data;
+          const categories = appData?.categories?.map((cat: Record<string, unknown>) => cat.description as string) || [];
+          const genres = appData?.genres?.map((genre: Record<string, unknown>) => genre.description as string) || [];
+          
+          return {
+            id: `steam_${game.appid}`,
+            name: game.name,
+            platform: "Steam",
+            playtimeMinutes: game.playtime_forever,
+            image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
+            categories: categories,
+            tags: genres,
+          };
+        } catch (error) {
+          // If details fetch fails, return game without categories/tags
+          return {
+            id: `steam_${game.appid}`,
+            name: game.name,
+            platform: "Steam",
+            playtimeMinutes: game.playtime_forever,
+            image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
+            categories: [],
+            tags: [],
+          };
+        }
+      })
+    );
+
+    // For remaining games (if any), return without detailed info
+    const remainingGames = gamesResponse.data.response.games.slice(100).map((game: Record<string, unknown>) => ({
       id: `steam_${game.appid}`,
       name: game.name,
       platform: "Steam",
       playtimeMinutes: game.playtime_forever,
       image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
+      categories: [],
+      tags: [],
     }));
+
+    return [...gamesWithDetails, ...remainingGames];
   } catch (error) {
     console.error("Error fetching Steam games:", error);
     return [];
