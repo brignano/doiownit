@@ -1,10 +1,11 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import type { Game } from "@/lib/gameProviders";
+import Navbar from "@/components/Navbar";
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -64,40 +65,8 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="border-b border-slate-200 bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">DoIOwnIt</h1>
-              <p className="text-sm text-slate-600">Your unified game library</p>
-            </div>
-            <div className="flex items-center gap-4">
-              {session?.user?.image && (
-                <Image
-                  src={session.user.image}
-                  alt={session.user.name || "User"}
-                  width={40}
-                  height={40}
-                  className="rounded-full"
-                />
-              )}
-              <div>
-                <p className="text-sm font-medium text-slate-900">
-                  {session?.user?.name}
-                </p>
-                <p className="text-xs text-slate-500">{session?.user?.email}</p>
-              </div>
-              <button
-                onClick={() => signOut({ redirectTo: "/auth/signin" })}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800"
-              >
-                Sign out
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Navbar */}
+      <Navbar />
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
