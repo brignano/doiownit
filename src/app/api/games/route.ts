@@ -28,6 +28,7 @@ export async function GET() {
   const linkedAccounts = await getLinkedAccounts();
   
   // If user has linked accounts, fetch from all of them
+  // Provider names: "steam", "epic", "gog", etc. (lowercase)
   if (linkedAccounts.length > 0) {
     for (const account of linkedAccounts) {
       if (account.provider === "steam" && account.providerId) {
