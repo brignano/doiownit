@@ -86,23 +86,13 @@ npm install
 cp .env.example .env.local
 ```
 
-4. Configure OAuth providers in `.env.local`:
+4. Get your Steam Web API Key:
+   - Go to https://steamcommunity.com/dev/apikey
+   - Log in with your Steam account
+   - Enter your domain (e.g., `localhost:3000` for development)
+   - Copy your API key and add it to `.env.local`
 
-#### Steam OAuth Setup
-1. Go to https://steamcommunity.com/dev/registerapp
-2. Create a new Steam application
-3. In OAuth settings, add redirect URI: `http://localhost:3000/api/auth/callback/steam`
-4. Copy Application ID and Client Secret to `.env.local` as `STEAM_OAUTH_ID` and `STEAM_OAUTH_SECRET`
-5. (Optional) Get Web API Key from https://steamcommunity.com/dev/apikey for game fetching
-
-#### Epic Games OAuth Setup
-1. Go to https://dev.epicgames.com/
-2. Create a new OAuth application
-3. Add redirect URI: `http://localhost:3000/api/auth/callback/epic`
-4. Copy Client ID and Client Secret to `.env.local` as `EPIC_OAUTH_ID` and `EPIC_OAUTH_SECRET`
-
-#### NextAuth Secret
-Generate a secure secret:
+5. Generate a NextAuth secret:
 ```bash
 openssl rand -hex 32
 ```
@@ -112,14 +102,10 @@ Your `.env.local` should contain:
 ```env
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your-generated-secret
-STEAM_OAUTH_ID=your-steam-id
-STEAM_OAUTH_SECRET=your-steam-secret
-STEAM_WEB_API_KEY=your-steam-api-key
-EPIC_OAUTH_ID=your-epic-id
-EPIC_OAUTH_SECRET=your-epic-secret
+STEAM_API_KEY=your-steam-api-key-here
 ```
 
-For detailed setup instructions, see [OAUTH_SETUP.md](./OAUTH_SETUP.md)
+**Note**: Epic Games authentication is not yet implemented. See [README_AUTH.md](./README_AUTH.md) for detailed authentication setup instructions.
 
 ### Running the Development Server
 
@@ -135,25 +121,29 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 src/
 ├── app/
 │   ├── api/
-│   │   ├── auth/[...nextauth]/    # NextAuth API routes
-│   │   └── games/                  # Games API endpoint
+│   │   ├── auth/[...nextauth]/     # NextAuth API routes
+│   │   ├── games/                  # Games API endpoint
+│   │   ├── steam/                  # Steam authentication routes
+│   │   └── linked-accounts/        # Account linking management
 │   ├── auth/
 │   │   └── signin/                 # Sign-in page
-│   ├── dashboard/                  # Main dashboard page
+│   ├── dashboard/                  # Main dashboard with game library
+│   ├── steam-signin/               # Steam OpenID signin handler
 │   ├── layout.tsx                  # Root layout with SessionProvider
 │   ├── page.tsx                    # Home page (redirects to dashboard)
 │   └── globals.css
+├── components/
+│   └── Navbar.tsx                  # Navigation component
 ├── lib/
 │   └── gameProviders.ts            # Game provider API services
-├── auth.ts                         # NextAuth configuration
-└── middleware.ts                   # Optional: route protection
+└── auth.ts                         # NextAuth configuration with CredentialsProvider
 ```
 
-## API Integration Guide
+## Adding a New Game Provider
 
-### Adding a New Game Provider
+The application uses a modular provider system. Here's how to add a new game provider:
 
-1. Add a new provider service function in `src/lib/gameProviders.ts`:
+### 1. Implement the Provider Service in `src/lib/gameProviders.ts`
 
 ```typescript
 export const getNewProviderGames = async (
@@ -172,6 +162,7 @@ export const getNewProviderGames = async (
         name: game.name,
         platform: "Provider Name",
         image: game.image,
+        playtime: game.playtime_hours || 0,
       })
     );
   } catch (error) {
@@ -181,30 +172,40 @@ export const getNewProviderGames = async (
 };
 ```
 
-2. Add the provider to NextAuth in `src/auth.ts`:
+### 2. Create Authentication Routes
+
+Add routes for the provider's OAuth flow in `src/app/api/{provider}/`:
+- `login/route.ts` - Initiates the OAuth flow
+- `callback/route.ts` - Handles the OAuth callback and stores credentials
+
+### 3. Update NextAuth Configuration in `src/auth.ts`
+
+Add the provider to the CredentialsProvider or create a new provider:
 
 ```typescript
-import NewProvider from "next-auth/providers/newprovider";
-
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [
-    NewProvider({
-      clientId: process.env.NEW_PROVIDER_ID,
-      clientSecret: process.env.NEW_PROVIDER_SECRET,
-    }),
-    // ... other providers
-  ],
-  // ... rest of config
-});
+// Store the access token in the session/JWT for later API calls
+session.user.accessToken = token.accessToken;
+session.user.provider = "newprovider";
 ```
 
-3. Call the function in `src/app/api/games/route.ts`:
+### 4. Call the Provider Function in `src/app/api/games/route.ts`
 
 ```typescript
-if (user.provider === "newprovider") {
-  const games = await getNewProviderGames(user.accessToken || "");
+import { getNewProviderGames } from "@/lib/gameProviders";
+
+// Inside the games API route:
+if (user.provider === "newprovider" && user.accessToken) {
+  const games = await getNewProviderGames(user.accessToken);
   allGames.push(...games);
 }
+```
+
+### 5. Add Sign-In Button in `src/app/auth/signin/page.tsx`
+
+```tsx
+<button onClick={() => signIn("newprovider")}>
+  Sign in with New Provider
+</button>
 ```
 
 ## Environment Variables
@@ -228,12 +229,20 @@ npm start
 
 ## Roadmap
 
-- [ ] Database integration for storing user game libraries
-- [ ] Steam OAuth implementation
-- [ ] Epic Games API integration
+### Completed
+- [x] Steam OpenID authentication with Web API integration
+- [x] Multi-platform game library aggregation (currently Steam)
+- [x] Dashboard with game tiles, search, and filtering
+- [x] API response caching to prevent excessive provider calls
+- [x] NextAuth.js v5 integration with custom CredentialsProvider
+- [x] Responsive UI with Tailwind CSS
+
+### In Progress / Planned
+- [ ] Epic Games OAuth integration
 - [ ] GOG API integration
 - [ ] PlayStation Network API integration
 - [ ] Xbox Game Pass API integration
+- [ ] Database integration for storing user game libraries
 - [ ] Game recommendations based on library
 - [ ] Game comparison between friends
 - [ ] Achievement tracking

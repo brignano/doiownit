@@ -74,8 +74,9 @@ export const getSteamGames = async (steamId: string): Promise<Game[]> => {
         if (i < gamesToFetch.length - 1) {
           await delay(STEAM_API_DELAY_MS);
         }
-      } catch (error) {
+      } catch (detailsError) {
         // If details fetch fails, return game without categories/tags
+        console.error(`Failed to fetch game details for ${game.appid}:`, detailsError);
         gamesWithDetails.push({
           id: `steam_${game.appid}`,
           name: game.name,
@@ -109,29 +110,50 @@ export const getSteamGames = async (steamId: string): Promise<Game[]> => {
 // Epic Games OAuth - Get games using OAuth access token
 export const getEpicGames = async (accessToken: string): Promise<Game[]> => {
   try {
-    // Get user's library from Epic Games
-    const response = await axios.get(
-      `https://api.epicgames.dev/epic/oauth/v2/library`,
+    // Epic Games library API endpoint
+    // This uses the GraphQL endpoint to fetch user's owned games
+    const response = await axios.post(
+      `https://www.epicgames.com/graphql`,
+      {
+        query: `
+          query GetOwnedGames {
+            me {
+              ownedGames {
+                elements {
+                  id
+                  name
+                  keyImages {
+                    type
+                    url
+                  }
+                }
+              }
+            }
+          }
+        `,
+      },
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
         },
       }
     );
 
-    return (response.data.records || []).map((game: Record<string, unknown>) => {
-      const metadata = game.metadata as Record<string, unknown>;
-      const keyImages = metadata.keyImages as Array<Record<string, unknown>>;
-      const categories = metadata.categories as string[] || [];
-      const genres = metadata.genres as string[] || [];
+    const games = response.data?.data?.me?.ownedGames?.elements || [];
+
+    return games.map((game: Record<string, unknown>) => {
+      const keyImages = game.keyImages as Array<Record<string, unknown>> || [];
       
       return {
-        id: `epic_${game.catalogItemId}`,
-        name: game.appName || game.displayName,
+        id: `epic_${game.id}`,
+        name: game.name,
         platform: "Epic Games",
-        image: keyImages?.[0]?.url,
-        categories: categories,
-        tags: genres,
+        image: keyImages.find((img) => img.type === "OfferImageHero")?.url ||
+                keyImages.find((img) => img.type === "OfferImageWide")?.url ||
+                keyImages[0]?.url,
+        categories: [],
+        tags: [],
       };
     });
   } catch (error) {

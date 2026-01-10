@@ -1,20 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
-export default function SteamSignInPage() {
+export default function EpicSignIn() {
   const router = useRouter();
   const { data: session } = useSession();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Automatically trigger sign-in when page loads
-    // This will use the steam-user cookie set by the Steam callback
+    // Automatically sign in when this page loads
+    // The cookie will be read by the CredentialsProvider
     const performSignIn = async () => {
       try {
-        const result = await signIn("steam", { redirect: false });
+        const result = await signIn("epic", { redirect: false });
         if (result?.ok) {
           // Check if user already has a session (linking mode)
           if (session) {
@@ -23,7 +23,7 @@ export default function SteamSignInPage() {
             router.push("/dashboard");
           }
         } else {
-          setError("Failed to sign in with Steam");
+          setError("Failed to sign in with Epic Games");
         }
       } catch (err) {
         console.error("Sign in error:", err);
@@ -37,8 +37,10 @@ export default function SteamSignInPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-slate-900 to-slate-800">
       <div className="text-center">
-        <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-slate-300 border-t-white mx-auto" />
-        <p className="text-slate-200">Completing Steam sign-in...</p>
+        <h1 className="text-2xl font-bold text-white">Signing in with Epic Games...</h1>
+        <p className="mt-2 text-slate-300">
+          Please wait while we authenticate your account.
+        </p>
         {error && (
           <div className="mt-4 rounded-lg bg-red-500 px-4 py-2 text-white">
             {error}

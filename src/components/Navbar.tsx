@@ -226,28 +226,53 @@ export default function Navbar() {
                   </div>
 
                   {/* Link Another Account */}
-                  <div className="mb-4">
-                    <Link
-                      href="/auth/signin"
-                      onClick={() => setIsDropdownOpen(false)}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                    >
-                      <svg
-                        className="h-5 w-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                  {connectedProviders.length === 1 && connectedProviders[0].provider === "steam" ? (
+                    <div className="mb-4">
+                      <button
+                        disabled
+                        title="Coming Soon"
+                        className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-slate-300 px-4 py-2 text-sm font-medium text-slate-400 cursor-not-allowed opacity-75"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 4v16m8-8H4"
-                        />
-                      </svg>
-                      Link Another Provider
-                    </Link>
-                  </div>
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 4v16m8-8H4"
+                          />
+                        </svg>
+                        Link Another Provider
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mb-4">
+                      <Link
+                        href="/auth/signin?linking=true"
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                      >
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 4v16m8-8H4"
+                          />
+                        </svg>
+                        Link Another Provider
+                      </Link>
+                    </div>
+                  )}
 
                   {/* Sign Out Button */}
                   <button

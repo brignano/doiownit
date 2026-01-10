@@ -68,6 +68,40 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       },
     }),
+    CredentialsProvider({
+      id: "epic",
+      name: "Epic Games",
+      credentials: {},
+      async authorize() {
+        // Read user data from cookie set by Epic Games callback
+        const cookieStore = await cookies();
+        const epicUserCookie = cookieStore.get("epic-user");
+        
+        if (!epicUserCookie) {
+          return null;
+        }
+        
+        try {
+          const userData = JSON.parse(epicUserCookie.value);
+          
+          // Clear the cookie after reading
+          cookieStore.delete("epic-user");
+          
+          return {
+            id: userData.id,
+            name: userData.name,
+            email: userData.email,
+            image: userData.image,
+            provider: userData.provider,
+            accessToken: userData.accessToken,
+            refreshToken: userData.refreshToken,
+          };
+        } catch (error) {
+          console.error("Failed to parse epic user data:", error);
+          return null;
+        }
+      },
+    }),
   ],
   pages: {
     signIn: "/auth/signin",
@@ -79,10 +113,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.picture = user.image;
         token.name = user.name;
         // Store the provider (steam, epic, etc.)
-        token.provider = account?.provider || "steam";
-        // Store the access token if available
+        const userWithProvider = user as Record<string, unknown>;
+        token.provider = (userWithProvider.provider as string) || account?.provider || "steam";
+        // Store the access token if available (from account or user object)
         if (account?.access_token) {
           token.accessToken = account.access_token;
+        } else if (userWithProvider.accessToken) {
+          token.accessToken = userWithProvider.accessToken as string;
         }
       }
       return token;
