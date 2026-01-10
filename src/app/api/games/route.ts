@@ -60,8 +60,17 @@ export async function GET() {
     new Map(allGames.map((game) => [game.name.toLowerCase(), game])).values()
   );
 
-  return Response.json({
-    games: uniqueGames,
-    totalCount: uniqueGames.length,
-  });
+  return Response.json(
+    {
+      games: uniqueGames,
+      totalCount: uniqueGames.length,
+    },
+    {
+      headers: {
+        // Cache for 1 hour (3600 seconds)
+        // This prevents hammering the Steam API on every page load
+        "Cache-Control": "private, max-age=3600",
+      },
+    }
+  );
 }
