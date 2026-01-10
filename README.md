@@ -27,16 +27,47 @@ A unified game library aggregator that allows you to sign in with Steam and Epic
 
 ## Getting Started
 
-### Prerequisites
+### Option 1: Using Dev Container (Recommended)
 
+The easiest way to get started is using the development container, which provides a pre-configured environment with all dependencies installed automatically.
+
+**Prerequisites:**
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- [VS Code](https://code.visualstudio.com/) with [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+- Git
+- Steam account (for testing)
+- Epic Games account (for testing)
+
+**Steps:**
+1. Clone the repository:
+```bash
+git clone https://github.com/brignano/doiownit.git
+cd doiownit
+```
+
+2. Open the repository in VS Code and reopen in container when prompted (or use Command Palette: `Dev Containers: Reopen in Container`)
+
+3. Wait for the container to build and dependencies to install automatically
+
+4. Set up environment variables (see configuration section below)
+
+5. Run the development server:
+```bash
+npm run dev
+```
+
+See [.devcontainer/README.md](.devcontainer/README.md) for more details about the dev container setup.
+
+### Option 2: Local Installation
+
+**Prerequisites:**
 - Node.js 22.4.1 or higher
 - npm 10.8.1 or higher
 - Git
 - Steam account (for testing)
 - Epic Games account (for testing)
 
-### Installation
-
+**Steps:**
 1. Clone the repository:
 ```bash
 git clone https://github.com/brignano/doiownit.git
@@ -47,6 +78,8 @@ cd doiownit
 ```bash
 npm install
 ```
+
+### Configuration
 
 3. Set up environment variables:
 ```bash
