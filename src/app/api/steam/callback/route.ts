@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getBaseUrl } from "@/auth";
+import { addLinkedAccount } from "@/lib/linkedAccounts";
 
 // Steam OpenID callback handler
 export async function GET(request: NextRequest) {
@@ -123,6 +124,14 @@ export async function GET(request: NextRequest) {
       sameSite: "lax",
       maxAge: 60, // 1 minute - just enough time to complete the sign-in
       path: "/",
+    });
+    
+    // Store linked account for multi-provider support
+    await addLinkedAccount({
+      provider: "steam",
+      providerId: player.steamid,
+      name: player.personaname,
+      image: player.avatarfull,
     });
     
     // Redirect to a page that will trigger the sign-in client-side

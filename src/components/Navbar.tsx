@@ -5,15 +5,23 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 
+interface LinkedAccount {
+  provider: string;
+  providerId: string;
+  name: string;
+  image?: string;
+}
+
 export default function Navbar() {
   const { data: session } = useSession();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Helper function to render provider icon
   const getProviderIcon = (provider: string) => {
-    switch (provider) {
-      case "Steam":
+    switch (provider.toLowerCase()) {
+      case "steam":
         return (
           <svg
             className="h-5 w-5 text-slate-700"
@@ -23,7 +31,8 @@ export default function Navbar() {
             <path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.066 3.331-1.363.261-.628.198-1.337-.145-1.979-.342-.643-.939-1.136-1.567-1.397-.628-.261-1.289-.212-1.877.063l1.525.631c.956.396 1.415 1.5 1.019 2.456-.396.957-1.5 1.415-2.456 1.02l.329-.071zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.253 0-2.265-1.014-2.265-2.265z" />
           </svg>
         );
-      case "Epic Games":
+      case "epic":
+      case "epic games":
         return (
           <svg
             className="h-5 w-5 text-slate-700"
@@ -46,6 +55,25 @@ export default function Navbar() {
     }
   };
 
+  // Fetch linked accounts
+  useEffect(() => {
+    const fetchLinkedAccounts = async () => {
+      try {
+        const response = await fetch("/api/linked-accounts");
+        if (response.ok) {
+          const data = await response.json();
+          setLinkedAccounts(data.accounts || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch linked accounts:", error);
+      }
+    };
+
+    if (session) {
+      fetchLinkedAccounts();
+    }
+  }, [session]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -67,10 +95,6 @@ export default function Navbar() {
     return null;
   }
 
-  // Determine connected providers based on session data
-  const sessionUser = session.user as typeof session.user & { provider?: string };
-  const provider = sessionUser?.provider || "steam";
-  
   // Map provider name to display name
   const providerDisplayNames: Record<string, string> = {
     steam: "Steam",
@@ -80,7 +104,17 @@ export default function Navbar() {
     xbox: "Xbox",
   };
   
-  const connectedProviders = [providerDisplayNames[provider] || provider];
+  // Get connected providers - use linked accounts if available, otherwise fall back to session
+  const sessionUser = session.user as typeof session.user & { provider?: string };
+  const connectedProviders = linkedAccounts.length > 0 
+    ? linkedAccounts.map(acc => ({
+        name: providerDisplayNames[acc.provider] || acc.provider.charAt(0).toUpperCase() + acc.provider.slice(1),
+        provider: acc.provider,
+      }))
+    : [{
+        name: providerDisplayNames[sessionUser?.provider || "steam"] || sessionUser?.provider || "Steam",
+        provider: sessionUser?.provider || "steam",
+      }];
 
   return (
     <header className="border-b border-slate-200 bg-white shadow-sm">
@@ -162,14 +196,14 @@ export default function Navbar() {
                       Connected Providers
                     </p>
                     <div className="space-y-2">
-                      {connectedProviders.map((provider) => (
+                      {connectedProviders.map((providerObj) => (
                         <div
-                          key={provider}
+                          key={providerObj.provider}
                           className="flex items-center gap-2 rounded-md bg-slate-50 px-3 py-2"
                         >
-                          {getProviderIcon(provider)}
+                          {getProviderIcon(providerObj.name)}
                           <span className="text-sm font-medium text-slate-700">
-                            {provider}
+                            {providerObj.name}
                           </span>
                           <span className="ml-auto">
                             <svg
@@ -189,6 +223,30 @@ export default function Navbar() {
                         </div>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Link Another Account */}
+                  <div className="mb-4">
+                    <Link
+                      href="/auth/signin"
+                      onClick={() => setIsDropdownOpen(false)}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    >
+                      <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
+                      </svg>
+                      Link Another Provider
+                    </Link>
                   </div>
 
                   {/* Sign Out Button */}
