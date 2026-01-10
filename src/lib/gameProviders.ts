@@ -31,50 +31,61 @@ export const getSteamGames = async (steamId: string): Promise<Game[]> => {
       return [];
     }
 
-    // Fetch detailed app info for categories and tags (limit to first 100 games for performance)
-    const gamesWithDetails = await Promise.all(
-      gamesResponse.data.response.games.slice(0, 100).map(async (game: Record<string, unknown>) => {
-        try {
-          // Fetch store details for categories and tags
-          const detailsResponse = await axios.get(
-            `https://store.steampowered.com/api/appdetails`,
-            {
-              params: {
-                appids: game.appid,
-              },
-            }
-          );
+    // Helper function to add delay for rate limiting
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-          const appData = detailsResponse.data?.[game.appid as string]?.data;
-          const categories = appData?.categories?.map((cat: Record<string, unknown>) => cat.description as string) || [];
-          const genres = appData?.genres?.map((genre: Record<string, unknown>) => genre.description as string) || [];
-          
-          return {
-            id: `steam_${game.appid}`,
-            name: game.name,
-            platform: "Steam",
-            playtimeMinutes: game.playtime_forever,
-            image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
-            categories: categories,
-            tags: genres,
-          };
-        } catch (error) {
-          // If details fetch fails, return game without categories/tags
-          return {
-            id: `steam_${game.appid}`,
-            name: game.name,
-            platform: "Steam",
-            playtimeMinutes: game.playtime_forever,
-            image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
-            categories: [],
-            tags: [],
-          };
+    // Fetch detailed app info for categories and tags (limit to first 50 games for performance and rate limiting)
+    const gamesWithDetails = [];
+    const gamesToFetch = gamesResponse.data.response.games.slice(0, 50);
+    
+    for (let i = 0; i < gamesToFetch.length; i++) {
+      const game = gamesToFetch[i] as Record<string, unknown>;
+      
+      try {
+        // Fetch store details for categories and tags
+        const detailsResponse = await axios.get(
+          `https://store.steampowered.com/api/appdetails`,
+          {
+            params: {
+              appids: game.appid,
+            },
+          }
+        );
+
+        const appData = detailsResponse.data?.[game.appid as string]?.data;
+        const categories = appData?.categories?.map((cat: Record<string, unknown>) => cat.description as string) || [];
+        const genres = appData?.genres?.map((genre: Record<string, unknown>) => genre.description as string) || [];
+        
+        gamesWithDetails.push({
+          id: `steam_${game.appid}`,
+          name: game.name,
+          platform: "Steam",
+          playtimeMinutes: game.playtime_forever,
+          image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
+          categories: categories,
+          tags: genres,
+        });
+        
+        // Add a small delay between requests (200ms) to avoid rate limiting
+        if (i < gamesToFetch.length - 1) {
+          await delay(200);
         }
-      })
-    );
+      } catch (error) {
+        // If details fetch fails, return game without categories/tags
+        gamesWithDetails.push({
+          id: `steam_${game.appid}`,
+          name: game.name,
+          platform: "Steam",
+          playtimeMinutes: game.playtime_forever,
+          image: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
+          categories: [],
+          tags: [],
+        });
+      }
+    }
 
     // For remaining games (if any), return without detailed info
-    const remainingGames = gamesResponse.data.response.games.slice(100).map((game: Record<string, unknown>) => ({
+    const remainingGames = gamesResponse.data.response.games.slice(50).map((game: Record<string, unknown>) => ({
       id: `steam_${game.appid}`,
       name: game.name,
       platform: "Steam",
@@ -107,11 +118,16 @@ export const getEpicGames = async (accessToken: string): Promise<Game[]> => {
     return (response.data.records || []).map((game: Record<string, unknown>) => {
       const metadata = game.metadata as Record<string, unknown>;
       const keyImages = metadata.keyImages as Array<Record<string, unknown>>;
+      const categories = metadata.categories as string[] || [];
+      const genres = metadata.genres as string[] || [];
+      
       return {
         id: `epic_${game.catalogItemId}`,
         name: game.appName || game.displayName,
         platform: "Epic Games",
         image: keyImages?.[0]?.url,
+        categories: categories,
+        tags: genres,
       };
     });
   } catch (error) {

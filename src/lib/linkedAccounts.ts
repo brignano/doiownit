@@ -5,6 +5,9 @@ export interface LinkedAccount {
   providerId: string;
   name: string;
   image?: string;
+  // Note: accessToken should not be stored in cookies in production
+  // For providers requiring OAuth tokens (like Epic), implement server-side
+  // session storage or use a database with encrypted token storage
   accessToken?: string;
 }
 
@@ -22,7 +25,28 @@ export async function getLinkedAccounts(): Promise<LinkedAccount[]> {
   }
   
   try {
-    return JSON.parse(accountsCookie.value);
+    const parsed = JSON.parse(accountsCookie.value);
+    
+    // Validate that parsed data is an array of LinkedAccount objects
+    if (!Array.isArray(parsed)) {
+      console.error("Invalid linked accounts data: not an array");
+      return [];
+    }
+    
+    // Validate each account has required fields
+    const validAccounts = parsed.filter((account: unknown) => {
+      if (typeof account !== "object" || account === null) {
+        return false;
+      }
+      const acc = account as Record<string, unknown>;
+      return (
+        typeof acc.provider === "string" &&
+        typeof acc.providerId === "string" &&
+        typeof acc.name === "string"
+      );
+    }) as LinkedAccount[];
+    
+    return validAccounts;
   } catch (error) {
     console.error("Failed to parse linked accounts:", error);
     return [];
