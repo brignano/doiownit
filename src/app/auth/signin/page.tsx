@@ -1,8 +1,19 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function SignIn() {
+  const router = useRouter();
+
+  const handleSteamLogin = () => {
+    router.push("/api/steam/login");
+  };
+
+  const handleEpicLogin = () => {
+    // TODO: Implement Epic Games login
+    console.log("Epic Games login not yet implemented");
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-slate-900 to-slate-800">
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-2xl">
@@ -15,7 +26,7 @@ export default function SignIn() {
 
         <div className="mt-8 space-y-4">
           <button
-            onClick={() => signIn("steam", { redirectTo: "/dashboard" })}
+            onClick={handleSteamLogin}
             className="flex w-full items-center justify-center gap-3 rounded-lg bg-linear-to-r from-blue-600 to-blue-700 px-4 py-3 font-medium text-white transition-colors hover:from-blue-700 hover:to-blue-800"
           >
             <svg
@@ -29,7 +40,7 @@ export default function SignIn() {
           </button>
 
           <button
-            onClick={() => signIn("epic", { redirectTo: "/dashboard" })}
+            onClick={handleEpicLogin}
             className="flex w-full items-center justify-center gap-3 rounded-lg bg-linear-to-r from-purple-600 to-purple-700 px-4 py-3 font-medium text-white transition-colors hover:from-purple-700 hover:to-purple-800"
           >
             <svg
