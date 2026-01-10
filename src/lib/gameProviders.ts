@@ -11,6 +11,10 @@ export interface Game {
   tags?: string[];
 }
 
+// Configuration constants
+const STEAM_DETAILED_GAMES_LIMIT = 50; // Limit for fetching detailed game info to avoid rate limits
+const STEAM_API_DELAY_MS = 200; // Delay between Steam API calls to avoid rate limiting
+
 // Steam OAuth - Get games using Steam ID
 export const getSteamGames = async (steamId: string): Promise<Game[]> => {
   try {
@@ -34,9 +38,9 @@ export const getSteamGames = async (steamId: string): Promise<Game[]> => {
     // Helper function to add delay for rate limiting
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // Fetch detailed app info for categories and tags (limit to first 50 games for performance and rate limiting)
+    // Fetch detailed app info for categories and tags
     const gamesWithDetails = [];
-    const gamesToFetch = gamesResponse.data.response.games.slice(0, 50);
+    const gamesToFetch = gamesResponse.data.response.games.slice(0, STEAM_DETAILED_GAMES_LIMIT);
     
     for (let i = 0; i < gamesToFetch.length; i++) {
       const game = gamesToFetch[i] as Record<string, unknown>;
@@ -66,9 +70,9 @@ export const getSteamGames = async (steamId: string): Promise<Game[]> => {
           tags: genres,
         });
         
-        // Add a small delay between requests (200ms) to avoid rate limiting
+        // Add a delay between requests to avoid rate limiting
         if (i < gamesToFetch.length - 1) {
-          await delay(200);
+          await delay(STEAM_API_DELAY_MS);
         }
       } catch (error) {
         // If details fetch fails, return game without categories/tags
@@ -85,7 +89,7 @@ export const getSteamGames = async (steamId: string): Promise<Game[]> => {
     }
 
     // For remaining games (if any), return without detailed info
-    const remainingGames = gamesResponse.data.response.games.slice(50).map((game: Record<string, unknown>) => ({
+    const remainingGames = gamesResponse.data.response.games.slice(STEAM_DETAILED_GAMES_LIMIT).map((game: Record<string, unknown>) => ({
       id: `steam_${game.appid}`,
       name: game.name,
       platform: "Steam",
