@@ -4,6 +4,7 @@ import {
   getEpicGames,
   type Game,
 } from "@/lib/gameProviders";
+import { getLinkedAccounts } from "@/lib/linkedAccounts";
 
 interface ExtendedUser {
   accessToken?: string;
@@ -23,17 +24,35 @@ export async function GET() {
   const user = session.user as (typeof session.user) & ExtendedUser;
   const allGames: Game[] = [];
 
-  // Fetch games from enabled providers
-  if (user.provider === "steam" && user.id) {
-    // Use the Steam ID to fetch games from Steam API
-    const steamGames = await getSteamGames(user.id);
-    allGames.push(...steamGames);
-  }
+  // Get all linked accounts
+  const linkedAccounts = await getLinkedAccounts();
+  
+  // If user has linked accounts, fetch from all of them
+  // Provider names: "steam", "epic", "gog", etc. (lowercase)
+  if (linkedAccounts.length > 0) {
+    for (const account of linkedAccounts) {
+      if (account.provider === "steam" && account.providerId) {
+        const steamGames = await getSteamGames(account.providerId);
+        allGames.push(...steamGames);
+      }
+      
+      if (account.provider === "epic" && account.accessToken) {
+        const epicGames = await getEpicGames(account.accessToken);
+        allGames.push(...epicGames);
+      }
+    }
+  } else {
+    // Fallback to old behavior if no linked accounts (for backward compatibility)
+    // Fetch games from current session provider
+    if (user.provider === "steam" && user.id) {
+      const steamGames = await getSteamGames(user.id);
+      allGames.push(...steamGames);
+    }
 
-  // Epic Games OAuth
-  if (user.provider === "epic" && user.accessToken) {
-    const epicGames = await getEpicGames(user.accessToken);
-    allGames.push(...epicGames);
+    if (user.provider === "epic" && user.accessToken) {
+      const epicGames = await getEpicGames(user.accessToken);
+      allGames.push(...epicGames);
+    }
   }
 
   // Remove duplicates based on game name
@@ -41,8 +60,17 @@ export async function GET() {
     new Map(allGames.map((game) => [game.name.toLowerCase(), game])).values()
   );
 
-  return Response.json({
-    games: uniqueGames,
-    totalCount: uniqueGames.length,
-  });
+  return Response.json(
+    {
+      games: uniqueGames,
+      totalCount: uniqueGames.length,
+    },
+    {
+      headers: {
+        // Cache for 1 hour (3600 seconds)
+        // This prevents hammering the Steam API on every page load
+        "Cache-Control": "private, max-age=3600",
+      },
+    }
+  );
 }

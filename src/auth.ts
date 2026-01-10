@@ -70,7 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   pages: {
-    signIn: "/",
+    signIn: "/auth/signin",
   },
   callbacks: {
     async jwt({ token, user, account }): Promise<ExtendedToken> {

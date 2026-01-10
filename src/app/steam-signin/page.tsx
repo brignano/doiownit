@@ -7,7 +7,7 @@ export default function SteamSignInPage() {
   useEffect(() => {
     // Automatically trigger sign-in when page loads
     // This will use the steam-user cookie set by the Steam callback
-    signIn("steam", { callbackUrl: "/", redirect: true });
+    signIn("steam", { callbackUrl: "/dashboard", redirect: true });
   }, []);
 
   return (
