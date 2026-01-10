@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getBaseUrl } from "@/auth";
 
 // Steam OpenID callback handler
 export async function GET(request: NextRequest) {
   try {
+    const baseUrl = getBaseUrl();
     const searchParams = request.nextUrl.searchParams;
     
     // Extract Steam ID from claimed_id parameter
@@ -13,7 +15,7 @@ export async function GET(request: NextRequest) {
     if (!steamIdMatch) {
       console.error("No Steam ID found in claimed_id:", claimedId);
       return NextResponse.redirect(
-        new URL("/?error=NoSteamID", request.url)
+        new URL("/?error=NoSteamID", baseUrl)
       );
     }
     
@@ -24,7 +26,7 @@ export async function GET(request: NextRequest) {
     if (mode !== "id_res") {
       console.error("Invalid OpenID mode:", mode);
       return NextResponse.redirect(
-        new URL("/?error=InvalidMode", request.url)
+        new URL("/?error=InvalidMode", baseUrl)
       );
     }
     
@@ -44,11 +46,12 @@ export async function GET(request: NextRequest) {
     });
     
     const verifyText = await verifyResponse.text();
+    console.log("Steam verification response:", verifyText);
     
     if (!verifyText.includes("is_valid:true")) {
-      console.error("Steam verification failed");
+      console.error("Steam verification failed - response was:", verifyText);
       return NextResponse.redirect(
-        new URL("/?error=VerificationFailed", request.url)
+        new URL("/?error=VerificationFailed", baseUrl)
       );
     }
     
@@ -57,7 +60,7 @@ export async function GET(request: NextRequest) {
     if (!apiKey) {
       console.error("STEAM_API_KEY not configured");
       return NextResponse.redirect(
-        new URL("/?error=NoAPIKey", request.url)
+        new URL("/?error=NoAPIKey", baseUrl)
       );
     }
     
@@ -67,14 +70,41 @@ export async function GET(request: NextRequest) {
     playerUrl.searchParams.set("key", apiKey);
     playerUrl.searchParams.set("steamids", steamId);
     
-    const playerResponse = await fetch(playerUrl);
-    const playerData = await playerResponse.json();
+    console.log("Fetching player data for Steam ID:", steamId);
+    
+    const playerResponse = await fetch(playerUrl.toString(), {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+      },
+    });
+    
+    if (!playerResponse.ok) {
+      console.error("Steam API request failed with status:", playerResponse.status);
+      const errorText = await playerResponse.text();
+      console.error("Steam API error response:", errorText);
+      return NextResponse.redirect(
+        new URL("/?error=SteamAPIError", baseUrl)
+      );
+    }
+    
+    let playerData;
+    try {
+      playerData = await playerResponse.json();
+    } catch (parseError) {
+      console.error("Failed to parse Steam API response as JSON:", parseError);
+      return NextResponse.redirect(
+        new URL("/?error=InvalidSteamResponse", baseUrl)
+      );
+    }
+    
     const player = playerData.response?.players?.[0];
     
     if (!player) {
       console.error("Failed to fetch player data for Steam ID:", steamId);
+      console.error("Player data response:", playerData);
       return NextResponse.redirect(
-        new URL("/?error=NoPlayerData", request.url)
+        new URL("/?error=NoPlayerData", baseUrl)
       );
     }
     
@@ -96,12 +126,12 @@ export async function GET(request: NextRequest) {
     });
     
     // Redirect to a page that will trigger the sign-in client-side
-    const signinUrl = new URL("/steam-signin", request.url);
+    const signinUrl = new URL("/steam-signin", baseUrl);
     return NextResponse.redirect(signinUrl);
   } catch (error) {
     console.error("Steam auth error:", error);
     return NextResponse.redirect(
-      new URL("/?error=Unknown", request.url)
+      new URL("/?error=Unknown", process.env.NEXTAUTH_URL || "http://localhost:3000")
     );
   }
 }

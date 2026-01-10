@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { getBaseUrl } from "@/auth";
 
 // Steam OpenID login initiation
 export async function GET() {
-  const returnUrl = `${process.env.NEXTAUTH_URL}/api/steam/callback`;
-  const realm = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const baseUrl = getBaseUrl();
+  const returnUrl = `${baseUrl}/api/steam/callback`;
+  const realm = baseUrl;
   
   const params = new URLSearchParams({
     "openid.ns": "http://specs.openid.net/auth/2.0",

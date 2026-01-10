@@ -4,6 +4,20 @@ import { Session } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { cookies } from "next/headers";
 
+// Get the base URL from environment or construct it
+export const getBaseUrl = () => {
+  // In Codespaces - check this FIRST to override NEXTAUTH_URL
+  if (process.env.CODESPACES === "true" && process.env.CODESPACE_NAME) {
+    return `https://${process.env.CODESPACE_NAME}-3000.app.github.dev`;
+  }
+  // Use explicit NEXTAUTH_URL if set (for production)
+  if (process.env.NEXTAUTH_URL && !process.env.NEXTAUTH_URL.includes("localhost")) {
+    return process.env.NEXTAUTH_URL;
+  }
+  // Fallback to localhost for local development
+  return "http://localhost:3000";
+};
+
 interface ExtendedToken extends JWT {
   steamId?: string;
 }
