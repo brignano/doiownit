@@ -20,11 +20,13 @@ export const getBaseUrl = () => {
 
 interface ExtendedToken extends JWT {
   steamId?: string;
+  provider?: string;
 }
 
 interface ExtendedSession extends Session {
   user?: Session["user"] & {
     id?: string;
+    provider?: string;
   };
 }
 
@@ -69,11 +71,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/",
   },
   callbacks: {
-    async jwt({ token, user }): Promise<ExtendedToken> {
+    async jwt({ token, user, account }): Promise<ExtendedToken> {
       if (user) {
         token.steamId = user.id;
         token.picture = user.image;
         token.name = user.name;
+        // Store the provider (steam, epic, etc.)
+        token.provider = account?.provider || "steam";
       }
       return token;
     },
@@ -84,14 +88,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session: Session;
       token: ExtendedToken;
     }): Promise<ExtendedSession> {
-      // Expose steam id, name, and avatar on session.user
+      // Expose steam id, name, avatar, and provider on session.user
       if (session.user && token.steamId) {
         const extendedUser = session.user as Session["user"] & {
           id?: string;
+          provider?: string;
         };
         extendedUser.id = token.steamId;
         extendedUser.name = token.name || session.user.name;
         extendedUser.image = token.picture || session.user.image;
+        extendedUser.provider = token.provider;
       }
       return session;
     },
