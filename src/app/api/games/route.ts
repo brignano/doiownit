@@ -1,8 +1,8 @@
 import { auth } from "@/auth";
 import {
-    getSteamGames,
-    getEpicGames,
-    type Game,
+  getSteamGames,
+  getEpicGames,
+  type Game,
 } from "@/lib/gameProviders";
 
 interface ExtendedUser {
@@ -10,6 +10,7 @@ interface ExtendedUser {
   refreshToken?: string;
   provider?: string;
   providerAccountId?: string;
+  id?: string;
 }
 
 export async function GET() {
@@ -22,19 +23,17 @@ export async function GET() {
   const user = session.user as (typeof session.user) & ExtendedUser;
   const allGames: Game[] = [];
 
-  // Fetch games from enabled providers using OAuth access tokens
-  if (user.accessToken) {
-    // Steam OAuth
-    if (user.provider === "steam") {
-      const steamGames = await getSteamGames(user.accessToken);
-      allGames.push(...steamGames);
-    }
+  // Fetch games from enabled providers
+  if (user.provider === "steam" && user.id) {
+    // Use the Steam ID to fetch games from Steam API
+    const steamGames = await getSteamGames(user.id);
+    allGames.push(...steamGames);
+  }
 
-    // Epic Games OAuth
-    if (user.provider === "epic") {
-      const epicGames = await getEpicGames(user.accessToken);
-      allGames.push(...epicGames);
-    }
+  // Epic Games OAuth
+  if (user.provider === "epic" && user.accessToken) {
+    const epicGames = await getEpicGames(user.accessToken);
+    allGames.push(...epicGames);
   }
 
   // Remove duplicates based on game name

@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
         hostname: "avatars.akamai.steamstatic.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "media.steampowered.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "cdn.cloudflare.steamstatic.com",
+        pathname: "/**",
+      },
     ],
   },
 };
